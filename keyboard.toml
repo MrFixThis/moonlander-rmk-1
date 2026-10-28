@@ -1,0 +1,24 @@
+[rmk]
+# Default debounce time in ms
+debounce_time = 20
+# Mouse key interval (ms) - controls mouse movement speed
+mouse_key_interval = 20
+# Mouse wheel interval (ms) - controls scrolling speed
+mouse_wheel_interval = 80
+# Maximum number of combos keyboard can store
+combo_max_num = 8
+# Maximum number of keys pressed simultaneously in a combo
+combo_max_length = 4
+# Maximum number of forks for conditional key actions
+fork_max_num = 8
+# Macro space size in bytes for storing sequences. The maximum number of Macros depends on
+# the size of each sequence: All sequences combined need to fit into macro_space_size, the
+# number of macro sequences doesn't matter.
+macro_space_size = 256
+
+# Leave untouched
+[event.layer_change]
+subs = 2
+
+[event.action]
+subs = 1

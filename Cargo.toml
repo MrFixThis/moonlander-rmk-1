@@ -1,0 +1,84 @@
+[package]
+name = "moonlander-rmk-1"
+edition = "2024"
+version = "0.1.0"
+authors = ["MrFixThis <mrfixthis55@gmail.com>"]
+description = "RMK-based firmware for the Moonlander MK I keyboard"
+repository = "https://github.com/MrFixThis/moonlander-rmk-1"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[[bin]]
+name = "moonlander-rmk-1"
+test = false
+bench = false
+
+[features]
+default = ["storage", "rgb2", "audio", "locks", "debounce_fast"]
+rev_a = []
+rev_b = ["cortex-m-rt/set-vtor"]
+indicators = []
+storage = ["rmk/storage"]
+rgb = []
+rgb2 = ["rgb", "dep:rmk-palettefx"]
+locks = ["indicators"]
+audio = []
+halfmoon = []
+debounce_fast = []
+vial = ["rmk/host", "rmk/vial", "storage"]
+defmt = [
+    "dep:defmt",
+    "rmk/defmt",
+    "embassy-stm32/defmt",
+    "embassy-executor/defmt",
+    "embassy-time/defmt",
+    "embassy-sync/defmt",
+    "embassy-futures/defmt",
+    "embassy-embedded-hal/defmt"
+]
+
+[dependencies]
+rmk = { version = "0.9.0", default-features = false }
+rmk-palettefx = { version = "0.2.0", optional = true }
+embassy-stm32 = { version = "0.6.0", features = [
+    "stm32f303cb",
+    "time-driver-tim15",
+] }
+embassy-executor = { version = "0.10", features = [
+    "platform-cortex-m",
+    "executor-thread",
+    "executor-interrupt",
+] }
+embassy-time = "0.5.1"
+embassy-sync = { version = "0.8.0", default-features = false }
+embassy-futures = "0.1.2"
+embassy-embedded-hal = { version = "0.6.0", default-features = false }
+cortex-m = { version = "0.7.9", features = ["critical-section-single-core"] }
+cortex-m-rt = "0.7.6"
+static_cell = "2.1.1"
+defmt = { version = "1.1", optional = true }
+panic-halt = "1.0"
+
+[build-dependencies]
+xz2 = "0.1.7"
+json = "0.12"
+const-gen = "1.6"
+
+[profile.dev]
+codegen-units = 1
+panic = "abort"
+debug = true
+opt-level = "s"
+overflow-checks = true
+lto = true
+
+[profile.release]
+codegen-units = 1
+panic = "abort"
+opt-level = "z"
+overflow-checks = false
+lto = true
+
+[profile.release-dbg]
+inherits = "release"
+debug = true
