@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+#[macro_use]
+mod log;
 mod keyboard;
 
 use embassy_executor::Spawner;

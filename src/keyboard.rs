@@ -160,6 +160,7 @@ impl Moonlander {
         #[cfg(feature = "audio")]
         let fut = join::join(fut, self.audio_driver.run());
 
+        info!("[Moonlander]: Keyboard started");
         fut.await;
     }
 }
@@ -193,14 +194,24 @@ pub mod i2c {
             let Some(device) = self.device.as_mut() else {
                 return false;
             };
-            device.write(addr, data).await.is_ok()
+
+            if let Err(_err) = device.write(addr, data).await {
+                error!("[I2C]: Could not wirte: {:?}", _err);
+                return false;
+            }
+            true
         }
 
         pub async fn write_read(&mut self, addr: u8, data: &[u8], buf: &mut [u8]) -> bool {
             let Some(device) = self.device.as_mut() else {
                 return false;
             };
-            device.write_read(addr, data, buf).await.is_ok()
+
+            if let Err(_err) = device.write_read(addr, data, buf).await {
+                error!("[I2C]: Could not wirte: {:?}", _err);
+                return false;
+            }
+            true
         }
 
         pub async fn recover(&mut self) {
@@ -252,6 +263,7 @@ pub mod i2c {
                     config(),
                 )
             });
+            info!("[I2C]: Bus re-initialized");
         }
     }
 
@@ -272,7 +284,7 @@ pub mod i2c {
         dma_tx: Peri<'static, peripherals::DMA1_CH6>,
         dma_rx: Peri<'static, peripherals::DMA1_CH7>,
     ) -> &'static SharedI2c {
-        I2C.init(SharedI2c::new(Bus {
+        let bus = I2C.init(SharedI2c::new(Bus {
             device: Some(I2c::new(
                 i2c1,
                 scl,
@@ -282,6 +294,9 @@ pub mod i2c {
                 crate::Irqs,
                 config(),
             )),
-        }))
+        }));
+
+        info!("[I2C]: Bus initialized");
+        bus
     }
 }

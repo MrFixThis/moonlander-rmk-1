@@ -229,8 +229,10 @@ impl Runnable for Left {
         #[cfg(feature = "indicators")]
         self.indicators.init().await;
 
+        info!("[Moonlander]: Left matrix initialized");
         loop {
             if let Some(event) = self.read_event().await {
+                debug!("[Moonlander#Left]: Event read {:?}", event);
                 event::publish_event_async(event).await;
             }
 
@@ -429,6 +431,7 @@ mod right {
         async fn sunset(&mut self) {
             self.is_init = false;
             self.release_all().await;
+            info!("[Moonlander#Right]: Right matrix sunsetted");
         }
 
         #[inline]
@@ -499,6 +502,7 @@ mod right {
 
     impl Runnable for Right {
         async fn run(&mut self) -> ! {
+            info!("[Moonlander]: Right matrix initialized");
             loop {
                 if !self.is_init {
                     if !self.configure_expander().await {
@@ -519,7 +523,10 @@ mod right {
 
                 match self.read_event().await {
                     Some(None) => {}
-                    Some(Some(event)) => event::publish_event_async(event).await,
+                    Some(Some(event)) => {
+                        debug!("[Moonlander#Left]: Event read {:?}", event);
+                        event::publish_event_async(event).await;
+                    }
                     None => {
                         self.sunset().await;
                         continue;

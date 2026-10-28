@@ -16,6 +16,7 @@ impl RgbController {
 
 impl Runnable for RgbController {
     async fn run(&mut self) -> ! {
+        info!("[Moonlander]: RGB controller initialized");
         loop {
             // TODO: To be implemented
             embassy_futures::yield_now().await;

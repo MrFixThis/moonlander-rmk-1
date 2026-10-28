@@ -17,6 +17,7 @@ impl AudioDriver {
 
 impl Runnable for AudioDriver {
     async fn run(&mut self) -> ! {
+        info!("[Moonlander]: Audio driver initialized");
         loop {
             // TODO: To be implemented
             embassy_futures::yield_now().await;
