@@ -91,7 +91,11 @@ impl Moonlander {
         #[allow(clippy::needless_update)]
         let rmk_config = RmkConfig {
             device_config: DeviceConfig {
-                product_name: "Moonlander MK I",
+                product_name: if cfg!(feature = "halfmoon") {
+                    "Moonlander MK I (Halfmoon)"
+                } else {
+                    "Moonlander MK I"
+                },
                 ..Default::default()
             },
             #[cfg(feature = "storage")]

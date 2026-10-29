@@ -54,7 +54,13 @@ fn generate_vial_config(out: &Path) {
     use const_gen::*;
     use xz2::read::XzEncoder;
 
-    let vial_config_file = env::var_os("VIAL_CONFIG_PATH").unwrap_or("vial.json".into());
+    let file_name = if cfg!(feature = "halfmoon") {
+        "halfmoon.json"
+    } else {
+        "moonlander.json"
+    };
+
+    let vial_config_file = env::var_os("VIAL_CONFIG_PATH").unwrap_or(format!("vial/{file_name}").into());
     let vial_config_path = Path::new(&vial_config_file);
     let content = fs::read_to_string(vial_config_path).unwrap_or_else(|err| {
         panic!(
