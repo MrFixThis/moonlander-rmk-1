@@ -2,8 +2,11 @@
 #![no_main]
 
 #[macro_use]
-mod log;
+mod macros;
 mod keyboard;
+
+#[cfg(feature = "defmt")]
+use defmt_rtt as _;
 
 use embassy_executor::Spawner;
 use embassy_stm32::{bind_interrupts, peripherals};
