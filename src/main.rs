@@ -61,8 +61,6 @@ async fn main(_spawner: Spawner) {
         row_pins: pins!(output(peripherals): [PB10, PB11, PB12, PB13, PB14, PB15]),
         #[cfg(feature = "indicators")]
         indic_pins: pins!(output(peripherals): [PB5, PB4, PB3]),
-        #[cfg(feature = "audio")]
-        audio_pins: pins!(output(peripherals): [PA5, PA4]),
         #[cfg(feature = "storage")]
         flash: peripherals.FLASH,
         #[cfg(any(feature = "rgb", not(feature = "halfmoon")))]

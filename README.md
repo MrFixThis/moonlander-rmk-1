@@ -12,11 +12,14 @@ The firmware provides a modular set of Cargo features allowing you to customize 
 - **`locks`**: Automatically enables `indicators` and enables support for lock status (i.e., Num Lock, Caps Lock).
 - **`storage`**: Enables persistent onboard configuration and storage via `rmk/storage`.
 - **`rgb`**: Enables underglow and lighting support based on `rmk-palettefx`.
-- **`audio`**: Enables sound/audio integration. (*In progress*)
 - **`halfmoon`**: Configures the firmware to discard the right side of the keyboard.
 - **`debounce_fast`**: Uses a high-frequency key debouncing logic for minimal latency.
 - **`vial`**: Enables host communication and live keymap configuration support with Vial.
 - **`defmt`**: Enables structured, low-overhead logging and debugging across the entire Embassy ecosystem.
+
+### TBI
+
+- **`audio`**: Enables sound/audio integration.
 
 ## Building & Flashing
 

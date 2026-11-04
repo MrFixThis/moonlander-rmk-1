@@ -1,5 +1,3 @@
-#[cfg(feature = "audio")]
-mod audio;
 #[cfg(feature = "rgb")]
 mod rgb;
 
@@ -42,8 +40,6 @@ pub struct BuildDescriptor {
     pub row_pins: RowPins,
     #[cfg(feature = "indicators")]
     pub indic_pins: matrix::IndicatorPins,
-    #[cfg(feature = "audio")]
-    pub audio_pins: audio::AudioPins,
     #[cfg(feature = "storage")]
     pub flash: Flash,
     #[cfg(any(feature = "rgb", not(feature = "halfmoon")))]
@@ -56,8 +52,6 @@ pub struct Moonlander {
     right: matrix::Right,
     #[cfg(feature = "rgb")]
     rgb_controller: rgb::RgbController,
-    #[cfg(feature = "audio")]
-    audio_driver: audio::AudioDriver,
     #[cfg(feature = "storage")]
     storage_flash: Option<StorageFlash>,
     usb_driver: Option<UsbDriver>,
@@ -79,8 +73,6 @@ impl Moonlander {
             right: matrix::Right::new(desc.i2c),
             #[cfg(feature = "rgb")]
             rgb_controller: rgb::RgbController::new(desc.i2c),
-            #[cfg(feature = "audio")]
-            audio_driver: audio::AudioDriver::new(desc.audio_pins),
             #[cfg(feature = "storage")]
             storage_flash: Some(StorageFlash::new(
                 embassy_stm32::flash::Flash::new_blocking(desc.flash),
@@ -162,8 +154,6 @@ impl Moonlander {
         let fut = join::join(fut, self.right.run());
         #[cfg(feature = "rgb")]
         let fut = join::join(fut, self.rgb_controller.run());
-        #[cfg(feature = "audio")]
-        let fut = join::join(fut, self.audio_driver.run());
 
         info!("[Moonlander]: Keyboard started");
         fut.await;
