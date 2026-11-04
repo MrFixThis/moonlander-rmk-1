@@ -6,11 +6,12 @@ mod macros;
 mod keyboard;
 
 #[cfg(feature = "defmt")]
-use defmt_rtt as _;
+use {defmt_rtt as _, panic_probe as _};
+#[cfg(not(feature = "defmt"))]
+use panic_halt as _;
 
 use embassy_executor::Spawner;
 use embassy_stm32::{bind_interrupts, peripherals};
-use panic_halt as _;
 
 use keyboard::{BuildDescriptor, Moonlander, UsbDriver, Watchdog};
 

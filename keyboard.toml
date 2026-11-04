@@ -21,4 +21,4 @@ macro_space_size = 256
 subs = 2
 
 [event.action]
-subs = 1
+subs = 2

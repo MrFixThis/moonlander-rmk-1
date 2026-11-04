@@ -398,9 +398,8 @@ mod right {
                 [GPIO_B, PORT_B_IDLE | led_b],
             ];
 
-            let mut bus = self.i2c.lock().await;
             for cmd in &cmds {
-                if !bus.write(MCP23018_ADDR, cmd).await {
+                if !self.i2c.lock().await.write(MCP23018_ADDR, cmd).await {
                     return false;
                 }
             }
@@ -460,7 +459,10 @@ mod right {
                     {
                         return None;
                     }
+
+                    drop(bus);
                     Timer::after_micros(10).await;
+                    bus = self.i2c.lock().await;
 
                     let mut rx = [0u8; 1];
                     if !bus.write_read(MCP23018_ADDR, &[GPIO_B], &mut rx).await {

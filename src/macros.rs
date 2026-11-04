@@ -14,6 +14,36 @@ macro_rules! __ {
 
 __! { $trace, $debug, $info, $warn, $error }
 
+#[cfg(feature = "rgb")]
+macro_rules! ltable {
+    ($vis:vis $name:ident[$ty:ty] => {
+        left: [$($litem:expr),* $(,)?],
+        right: [$($ritem:expr),* $(,)?] $(,)?
+    }) => {
+        $vis const $name: [$ty; ltable!(__@keys)] = ltable!(__@{
+            left: [$($litem),*],
+            right: [$($ritem),*],
+        });
+    };
+    (__@{
+        left: [$($litem:expr),* $(,)?],
+        right: [$($ritem:expr),* $(,)?] $(,)?
+    }) => {{
+        #[cfg(not(feature = "halfmoon"))]
+        { [ $($litem,)* $($ritem,)* ] }
+
+        #[cfg(feature = "halfmoon")]
+        { [ $($litem,)* ] }
+    }};
+    (__@keys) => {{
+        #[cfg(not(feature = "halfmoon"))]
+        { $crate::keyboard::KEYS }
+
+        #[cfg(feature = "halfmoon")]
+        { $crate::keyboard::KEYS / 2 }
+    }}
+}
+
 macro_rules! matrix {
     ($vis:vis $name:ident[$ty:ty] => {
         left: [$([$($litem:expr),*]),* $(,)?],

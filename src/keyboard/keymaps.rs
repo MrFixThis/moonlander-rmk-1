@@ -57,16 +57,16 @@ keymaps!(pub(super) KEYMAPS[LAYER_NUM] => [
             [______,               shifted!(Kc1),  shifted!(Kc2),  shifted!(LeftBracket), shifted!(RightBracket), shifted!(Backslash), ______],
             [______,               shifted!(Kc3),  shifted!(Kc4),  shifted!(Kc9),         shifted!(Kc0),          k!(Grave),           ______],
             [______,               shifted!(Kc5),  shifted!(Kc6),  k!(LeftBracket),       k!(RightBracket),       shifted!(Grave),     xxxxxx],
-            [kbctrl!(ClearEeprom), ______,         ______,         ______,                ______,                 xxxxxx,              xxxxxx],
-            [light!(RgbHud),       light!(RgbVad), light!(RgbHui), light!(RgbVai),        xxxxxx,                 xxxxxx,              xxxxxx],
+            [kbctrl!(ClearEeprom), light!(RgbSai), light!(RgbSad), light!(RgbSpi),        light!(RgbSpd),         xxxxxx,              xxxxxx],
+            [light!(RgbHui),       light!(RgbHud), light!(RgbVai), light!(RgbVad),        xxxxxx,                 xxxxxx,              xxxxxx],
         ],
         right: [
-            [k!(F7), k!(F8),        k!(F9),  k!(F10),        k!(F11),                k!(F12),        ______],
-            [______, k!(Up),        k!(Kc7), k!(Kc8),        k!(Kc9),                k!(KpAsterisk), ______],
-            [______, k!(Down),      k!(Kc4), k!(Kc5),        k!(Kc6),                k!(KpPlus),     ______],
-            [xxxxxx, shifted!(Kc7), k!(Kc1), k!(Kc2),        k!(Kc3),                k!(Backslash),  ______],
-            [xxxxxx, xxxxxx,        ______,  k!(Dot),        k!(Kc0),                k!(Equal),      ______],
-            [xxxxxx, xxxxxx,        xxxxxx,  light!(RgbTog), light!(RgbModeForward), ______,         ______]
+            [k!(F7), k!(F8),        k!(F9),  k!(F10),        k!(F11),                k!(F12),                ______],
+            [______, k!(Up),        k!(Kc7), k!(Kc8),        k!(Kc9),                k!(KpAsterisk),         ______],
+            [______, k!(Down),      k!(Kc4), k!(Kc5),        k!(Kc6),                k!(KpPlus),             ______],
+            [xxxxxx, shifted!(Kc7), k!(Kc1), k!(Kc2),        k!(Kc3),                k!(Backslash),          ______],
+            [xxxxxx, xxxxxx,        ______,  k!(Dot),        k!(Kc0),                k!(Equal),              ______],
+            [xxxxxx, xxxxxx,        xxxxxx,  light!(RgbTog), light!(RgbModeForward), light!(RgbModeReverse), ______]
         ],
     },
     Media => {

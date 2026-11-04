@@ -21,6 +21,8 @@ use matrix::{ColPins, Left, RowPins};
 
 pub const COLS: usize = 7;
 pub const ROWS: usize = 12;
+#[cfg(feature = "rgb")]
+pub const KEYS: usize = 72;
 
 #[cfg(feature = "storage")]
 pub type Flash = embassy_stm32::Peri<'static, peripherals::FLASH>;
@@ -86,7 +88,6 @@ impl Moonlander {
         }
     }
 
-    #[inline]
     pub async fn run(&mut self) {
         #[allow(clippy::needless_update)]
         let rmk_config = RmkConfig {
@@ -150,9 +151,9 @@ impl Moonlander {
 
         let fut = join::join4(
             transport.run(),
+            watchdog_runner,
             keyboard.run(),
             self.left.run(),
-            watchdog_runner,
         );
 
         #[cfg(feature = "storage")]
@@ -173,14 +174,13 @@ impl Moonlander {
 pub mod i2c {
     use embassy_stm32::{
         Peri,
-        gpio::{Flex, Speed},
         i2c::{Config, I2c as I2cIn, Master},
         mode::Async,
         peripherals,
         time::Hertz,
     };
     use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
-    use embassy_time::{Duration, Timer};
+    use embassy_time::Duration;
     use static_cell::StaticCell;
 
     pub type I2c = I2cIn<'static, Async, Master>;
@@ -206,6 +206,7 @@ pub mod i2c {
             true
         }
 
+        #[cfg(not(feature = "halfmoon"))]
         pub async fn write_read(&mut self, addr: u8, data: &[u8], buf: &mut [u8]) -> bool {
             let Some(device) = self.device.as_mut() else {
                 return false;
@@ -218,6 +219,7 @@ pub mod i2c {
             true
         }
 
+        #[cfg(not(feature = "halfmoon"))]
         pub async fn recover(&mut self) {
             drop(self.device.take());
 
@@ -225,17 +227,17 @@ pub mod i2c {
                 // SAFETY: the driver is gone, nobody else owns these pins.
                 let (mut scl, mut sda) = unsafe {
                     (
-                        Flex::new(peripherals::PB6::steal()),
-                        Flex::new(peripherals::PB7::steal()),
+                        embassy_stm32::gpio::Flex::new(peripherals::PB6::steal()),
+                        embassy_stm32::gpio::Flex::new(peripherals::PB7::steal()),
                     )
                 };
 
                 // Level first, then mode, so the lines never glitch low.
                 scl.set_high();
                 sda.set_high();
-                scl.set_as_input_output(Speed::Low);
-                sda.set_as_input_output(Speed::Low);
-                Timer::after_micros(5).await;
+                scl.set_as_input_output(embassy_stm32::gpio::Speed::Low);
+                sda.set_as_input_output(embassy_stm32::gpio::Speed::Low);
+                embassy_time::Timer::after_micros(5).await;
 
                 // Up to 9 clocks, until the slave lets go of SDA.
                 for _ in 0..9 {
@@ -243,16 +245,16 @@ pub mod i2c {
                         break;
                     }
                     scl.set_low();
-                    Timer::after_micros(5).await;
+                    embassy_time::Timer::after_micros(5).await;
                     scl.set_high();
-                    Timer::after_micros(5).await;
+                    embassy_time::Timer::after_micros(5).await;
                 }
 
                 // STOP: SDA low -> high while SCL is high.
                 sda.set_low();
-                Timer::after_micros(5).await;
+                embassy_time::Timer::after_micros(5).await;
                 sda.set_high();
-                Timer::after_micros(5).await;
+                embassy_time::Timer::after_micros(5).await;
             }
 
             // SAFETY: same as above, `device` is None so these are free.

@@ -31,6 +31,9 @@ fn main() {
     println!("cargo:rustc-link-arg=-Tlink.x");
     println!("cargo:rustc-linker=flip-link");
 
+    #[cfg(feature = "defmt")]
+    println!("cargo:rustc-link-arg=-Tdefmt.x");
+
     println!("cargo:rerun-if-changed={mem_file}");
 
     #[cfg(feature = "vial")]
@@ -60,7 +63,8 @@ fn generate_vial_config(out: &Path) {
         "moonlander.json"
     };
 
-    let vial_config_file = env::var_os("VIAL_CONFIG_PATH").unwrap_or(format!("vial/{file_name}").into());
+    let vial_config_file =
+        env::var_os("VIAL_CONFIG_PATH").unwrap_or(format!("vial/{file_name}").into());
     let vial_config_path = Path::new(&vial_config_file);
     let content = fs::read_to_string(vial_config_path).unwrap_or_else(|err| {
         panic!(

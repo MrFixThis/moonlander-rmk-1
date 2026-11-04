@@ -11,8 +11,7 @@ The firmware provides a modular set of Cargo features allowing you to customize 
 - **`indicators`**: Enables support for indicator LEDs.
 - **`locks`**: Automatically enables `indicators` and enables support for lock status (i.e., Num Lock, Caps Lock).
 - **`storage`**: Enables persistent onboard configuration and storage via `rmk/storage`.
-- **`rgb`**: Enables base underglow and lighting support. (*In progress*)
-- **`rgb2`**: Advanced lighting based on `rmk-palettefx` for complex visual effects. (*In progress*)
+- **`rgb`**: Enables underglow and lighting support based on `rmk-palettefx`.
 - **`audio`**: Enables sound/audio integration. (*In progress*)
 - **`halfmoon`**: Configures the firmware to discard the right side of the keyboard.
 - **`debounce_fast`**: Uses a high-frequency key debouncing logic for minimal latency.
