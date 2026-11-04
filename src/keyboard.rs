@@ -4,7 +4,6 @@ mod rgb;
 mod keymaps;
 mod matrix;
 
-use embassy_futures::join;
 use embassy_stm32::{peripherals, usb::Driver, wdg::IndependentWatchdog};
 use embassy_time::Timer;
 use rmk::{
@@ -141,22 +140,35 @@ impl Moonlander {
             }
         };
 
-        let fut = join::join4(
-            transport.run(),
-            watchdog_runner,
-            keyboard.run(),
-            self.left.run(),
-        );
+        let mut usb = core::pin::pin!(transport.run());
+        let mut watchdog = core::pin::pin!(watchdog_runner);
+        let mut keyboard = core::pin::pin!(keyboard.run());
+        let mut left = core::pin::pin!(self.left.run());
 
         #[cfg(feature = "storage")]
-        let fut = join::join(fut, storage.run());
+        let mut storage = core::pin::pin!(storage.run());
         #[cfg(not(feature = "halfmoon"))]
-        let fut = join::join(fut, self.right.run());
+        let mut right = core::pin::pin!(self.right.run());
         #[cfg(feature = "rgb")]
-        let fut = join::join(fut, self.rgb_controller.run());
+        let mut rgb = core::pin::pin!(self.rgb_controller.run());
 
         info!("[Moonlander]: Keyboard started");
-        fut.await;
+        core::future::poll_fn(|cx| {
+            _ = (
+                usb.as_mut().poll(cx),
+                watchdog.as_mut().poll(cx),
+                keyboard.as_mut().poll(cx),
+                left.as_mut().poll(cx),
+                #[cfg(feature = "storage")]
+                storage.as_mut().poll(cx),
+                #[cfg(not(feature = "halfmoon"))]
+                right.as_mut().poll(cx),
+                #[cfg(feature = "rgb")]
+                rgb.as_mut().poll(cx),
+            );
+            core::task::Poll::<()>::Pending
+        })
+        .await;
     }
 }
 
