@@ -1,3 +1,5 @@
+mod palette;
+
 use embassy_futures::select;
 use embassy_time::{Duration, Instant, Ticker, Timer};
 use rmk::{
@@ -10,7 +12,6 @@ use rmk_palettefx::{
     color::{self, Hsv, Rgb},
     effects::{FlowState, FrameParams, Lcg, ReactiveState, RippleState, SparkleState, VortexState},
     layout::LedLayout,
-    palette::{self, id},
 };
 use sequential_storage::{
     cache::{Cache as CacheIn, Uncached},
@@ -378,7 +379,7 @@ impl Default for State {
         Self {
             enabled: false,
             effect: Effect::sparkle(),
-            palette_id: id::SYNTHWAVE,
+            palette_id: 0,
             speed: 128,
             saturation: u8::MAX,
             brightness: u8::MAX,
@@ -480,12 +481,12 @@ impl State {
     }
 
     const fn prev_palette(&mut self) {
-        self.palette_id = (self.palette_id + 1) % (id::WATERMELON + 1);
+        self.palette_id = (self.palette_id + 1) % palette::COLORS.len();
     }
 
     const fn next_palette(&mut self) {
         self.palette_id = if self.palette_id == 0 {
-            id::WATERMELON
+            palette::COLORS.len() - 1
         } else {
             self.palette_id - 1
         };
@@ -558,8 +559,9 @@ impl State {
     }
 
     fn as_frame_params(&self) -> FrameParams<'static> {
+        let curr_palette = unsafe { palette::COLORS.get_unchecked(self.palette_id) };
         FrameParams {
-            palette: palette::BUILTIN_PALETTES[self.palette_id],
+            palette: *curr_palette,
             speed: self.speed,
             sat: self.saturation,
             val: self.brightness,
