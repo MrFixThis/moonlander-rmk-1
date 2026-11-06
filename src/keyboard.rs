@@ -8,7 +8,7 @@ use embassy_stm32::{peripherals, usb::Driver, wdg::IndependentWatchdog};
 use embassy_time::Timer;
 use rmk::{
     KeymapData,
-    config::{DeviceConfig, PositionalConfig, RmkConfig},
+    config::{DeviceConfig, PositionalConfig},
     core_traits::Runnable,
     keyboard::Keyboard,
     usb::UsbTransport,
@@ -21,10 +21,10 @@ pub const ROWS: usize = 12;
 #[cfg(feature = "rgb")]
 pub const KEYS: usize = 72;
 
-#[cfg(feature = "storage")]
+#[cfg(feature = "rgb")]
 pub type Flash = embassy_stm32::Peri<'static, peripherals::FLASH>;
 
-#[cfg(feature = "storage")]
+#[cfg(feature = "rgb")]
 pub type StorageFlash = embassy_embedded_hal::adapter::BlockingAsync<
     embassy_stm32::flash::Flash<'static, embassy_stm32::flash::Blocking>,
 >;
@@ -39,7 +39,7 @@ pub struct BuildDescriptor {
     pub row_pins: RowPins,
     #[cfg(feature = "indicators")]
     pub indic_pins: matrix::IndicatorPins,
-    #[cfg(feature = "storage")]
+    #[cfg(feature = "rgb")]
     pub flash: Flash,
     #[cfg(any(feature = "rgb", not(feature = "halfmoon")))]
     pub i2c: &'static i2c::SharedI2c,
@@ -49,12 +49,12 @@ pub struct Moonlander {
     left: Left,
     #[cfg(not(feature = "halfmoon"))]
     right: matrix::Right,
-    #[cfg(feature = "rgb")]
-    rgb_controller: rgb::RgbController,
-    #[cfg(feature = "storage")]
-    storage_flash: Option<StorageFlash>,
     usb_driver: Option<UsbDriver>,
     watchdog: Option<Watchdog>,
+    #[cfg(feature = "rgb")]
+    storage_flash: Option<StorageFlash>,
+    #[cfg(feature = "rgb")]
+    i2c: &'static i2c::SharedI2c,
 }
 
 impl Moonlander {
@@ -71,36 +71,21 @@ impl Moonlander {
             #[cfg(not(feature = "halfmoon"))]
             right: matrix::Right::new(desc.i2c),
             #[cfg(feature = "rgb")]
-            rgb_controller: rgb::RgbController::new(desc.i2c),
-            #[cfg(feature = "storage")]
             storage_flash: Some(StorageFlash::new(
                 embassy_stm32::flash::Flash::new_blocking(desc.flash),
             )),
+            #[cfg(feature = "rgb")]
+            i2c: desc.i2c,
         }
     }
 
     pub async fn run(&mut self) {
-        #[allow(clippy::needless_update)]
-        let rmk_config = RmkConfig {
-            device_config: DeviceConfig {
-                product_name: if cfg!(feature = "halfmoon") {
-                    "Moonlander MK I (Halfmoon)"
-                } else {
-                    "Moonlander MK I"
-                },
-                ..Default::default()
+        let device_config = DeviceConfig {
+            product_name: if cfg!(feature = "halfmoon") {
+                "Moonlander MK I (Halfmoon)"
+            } else {
+                "Moonlander MK I"
             },
-            #[cfg(feature = "storage")]
-            storage_config: rmk::config::StorageConfig {
-                num_sectors: 5,
-                ..Default::default()
-            },
-            #[cfg(feature = "vial")]
-            vial_config: rmk::config::VialConfig::new(
-                keymaps::vial::VIAL_KEYBOARD_ID,
-                keymaps::vial::VIAL_KEYBOARD_DEF,
-                &[],
-            ),
             ..Default::default()
         };
 
@@ -108,29 +93,14 @@ impl Moonlander {
         let positional_config = PositionalConfig::new(keymaps::CHORDAL_HOLD_LAYOUT);
         let mut behavior_config = keymaps::behavior_config();
 
-        #[cfg(feature = "storage")]
-        let (keymap, mut storage) = rmk::initialize_keymap_and_storage(
-            &mut keymap_data,
-            self.storage_flash.take().unwrap(),
-            &rmk_config.storage_config,
-            &mut behavior_config,
-            &positional_config,
-        )
-        .await;
-
-        #[cfg(not(feature = "storage"))]
+        let mut transport = UsbTransport::new(self.usb_driver.take().unwrap(), device_config);
         let keymap =
             rmk::initialize_keymap(&mut keymap_data, &mut behavior_config, &positional_config)
                 .await;
-
         let mut keyboard = Keyboard::new(&keymap);
-        #[cfg(feature = "vial")]
-        let vial_service = rmk::host::HostService::new(&keymap, &rmk_config);
-        #[cfg_attr(feature = "vial", allow(unused_mut))]
-        let mut transport =
-            UsbTransport::new(self.usb_driver.take().unwrap(), rmk_config.device_config);
-        #[cfg(feature = "vial")]
-        let mut transport = transport.with_host_service(&vial_service);
+        #[cfg(feature = "rgb")]
+        let mut rgb_controller =
+            rgb::RgbController::new(self.i2c, self.storage_flash.take().unwrap());
         let mut watchdog = self.watchdog.take().unwrap();
         let watchdog_runner = async move {
             watchdog.unleash();
@@ -145,12 +115,10 @@ impl Moonlander {
         let mut keyboard = core::pin::pin!(keyboard.run());
         let mut left = core::pin::pin!(self.left.run());
 
-        #[cfg(feature = "storage")]
-        let mut storage = core::pin::pin!(storage.run());
         #[cfg(not(feature = "halfmoon"))]
         let mut right = core::pin::pin!(self.right.run());
         #[cfg(feature = "rgb")]
-        let mut rgb = core::pin::pin!(self.rgb_controller.run());
+        let mut rgb = core::pin::pin!(rgb_controller.run());
 
         info!("[Moonlander]: Keyboard started");
         core::future::poll_fn(|cx| {
@@ -159,8 +127,6 @@ impl Moonlander {
                 watchdog.as_mut().poll(cx),
                 keyboard.as_mut().poll(cx),
                 left.as_mut().poll(cx),
-                #[cfg(feature = "storage")]
-                storage.as_mut().poll(cx),
                 #[cfg(not(feature = "halfmoon"))]
                 right.as_mut().poll(cx),
                 #[cfg(feature = "rgb")]

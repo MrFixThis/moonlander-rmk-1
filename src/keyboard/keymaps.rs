@@ -25,11 +25,6 @@ mod alias {
     pub(super) const Meh: KeyAction = wm!(No, Mc::new_from(true, false, true, true, true));
 }
 
-#[cfg(feature = "vial")]
-pub(super) mod vial {
-    include!(concat!(env!("OUT_DIR"), "/vial_gen_config.rs"));
-}
-
 const LAYER_NUM: usize = 3;
 
 keymaps!(pub(super) KEYMAPS[LAYER_NUM] => [

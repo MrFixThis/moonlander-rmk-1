@@ -61,7 +61,7 @@ async fn main(_spawner: Spawner) {
         row_pins: pins!(output(peripherals): [PB10, PB11, PB12, PB13, PB14, PB15]),
         #[cfg(feature = "indicators")]
         indic_pins: pins!(output(peripherals): [PB5, PB4, PB3]),
-        #[cfg(feature = "storage")]
+        #[cfg(feature = "rgb")]
         flash: peripherals.FLASH,
         #[cfg(any(feature = "rgb", not(feature = "halfmoon")))]
         i2c: keyboard::i2c::init(

@@ -1,5 +1,5 @@
 [toolchain]
-channel = "stable"
+channel = "nightly"
 components = ["rust-src", "rustfmt", "clippy", "rust-analyzer", "llvm-tools"]
 targets = [
     "thumbv7em-none-eabihf",

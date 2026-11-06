@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 
 set -e
@@ -6,6 +5,8 @@ set -e
 IMAGE_NAME="rmk-moonlander-flasher"
 PROFILE=""
 FEATURES=""
+REVISION=""
+NO_DEFAULT_FEATURES=false
 
 if ! command -v docker &> /dev/null || ! docker info &> /dev/null; then
     echo "Error: Docker engine is required but not running or installed." >&2
@@ -30,6 +31,17 @@ while [[ "$#" -gt 0 ]]; do
             FEATURES="$2"
             shift
             ;;
+        --revision)
+            if [[ "$#" -lt 2 || -z "$2" ]]; then
+                echo "Error: --revision requires a value." >&2
+                exit 1
+            fi
+            REVISION="$2"
+            shift
+            ;;
+        --no-default-features)
+            NO_DEFAULT_FEATURES=true
+            ;;
         *)
             echo "Unknown parameter: $1" >&2
             exit 1
@@ -37,6 +49,14 @@ while [[ "$#" -gt 0 ]]; do
     esac
     shift
 done
+
+case "$REVISION" in
+    rev-a|rev-b) ;;
+    *)
+        echo "Error: --revision must be specified (rev-a or rev-b)." >&2
+        exit 1
+        ;;
+esac
 
 echo "==> Building Docker image..."
 docker build -t "$IMAGE_NAME" .
@@ -48,6 +68,8 @@ docker run --rm --privileged \
     -w /workspace \
     -e PROFILE="$PROFILE" \
     -e FEATURES="$FEATURES" \
+    -e REVISION="$REVISION" \
+    -e NO_DEFAULT_FEATURES="$NO_DEFAULT_FEATURES" \
     "$IMAGE_NAME" bash -c '
         set -e
 
@@ -61,7 +83,13 @@ docker run --rm --privileged \
             BUILD_ARGS+=(--features "$FEATURES")
         fi
 
+        if [[ "$NO_DEFAULT_FEATURES" == "true" ]]; then
+            BUILD_ARGS+=(--no-default-features)
+        fi
+
+        echo "==> Revision: $REVISION"
         echo "==> Compiling firmware..."
+
         cargo build "${BUILD_ARGS[@]}"
 
         # Cargo uses "debug" when no profile is specified.
@@ -77,21 +105,15 @@ docker run --rm --privileged \
         echo "==> Converting ELF to binary..."
         arm-none-eabi-objcopy -O binary "$ELF_PATH" "$BIN_PATH"
 
-        # revA uses the native STM32 ROM DFU bootloader.
-        # revB reserves the first 8 KiB for ZSA'\''s custom bootloader.
-        FLASH_ADDR="0x08000000"
-        IFS="," read -ra ENABLED_FEATURES <<< "$FEATURES"
-
-        for feature in "${ENABLED_FEATURES[@]}"; do
-            if [[ "$feature" == "rev_b" ]]; then
-                FLASH_ADDR="0x08002000"
-                break
-            fi
-        done
+        case "$REVISION" in
+            rev-a) FLASH_ADDR="0x08000000" ;;
+            rev-b) FLASH_ADDR="0x08002000" ;;
+        esac
 
         echo "==> Firmware: $BIN_PATH"
         echo "==> Flash address: $FLASH_ADDR"
         echo "==> Flashing device via dfu-util..."
+
         dfu-util -R -D "$BIN_PATH" -a 0 -s "${FLASH_ADDR}:leave"
     '
 

@@ -12,6 +12,11 @@ use rmk_palettefx::{
     layout::LedLayout,
     palette::{self, id},
 };
+use sequential_storage::{
+    cache::{Cache as CacheIn, Uncached},
+    map::{MapConfig, MapStorage, PostcardValue},
+};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::keyboard::i2c::SharedI2c;
 
@@ -45,27 +50,35 @@ const LEDS_PER_DRIVER: usize = LED_COUNT / DRIVERS;
 const NO_LED: u8 = 0xFF;
 const EFFECT_TICK_MS: u64 = 80;
 const REACTIVE_HITS: usize = 8;
+const STORAGE_START_OFFSET: u32 = 0x1F000;
+const STORAGE_SIZE: u32 = 2 * 2 * 1024;
+const KEY_RGB_STATE: u8 = 0x01;
 
 const LAYOUT: Layout = Layout;
 
 type ActionSubscriber = <ActionEvent as SubscribableEvent>::Subscriber;
 
+type Cache = CacheIn<Uncached, Uncached, Uncached, u8>;
+type Map = MapStorage<u8, super::StorageFlash, Cache>;
+
 pub struct RgbController {
     i2c: &'static SharedI2c,
     action_sub: ActionSubscriber,
     state: State,
+    storage: Storage,
 }
 
 impl RgbController {
-    pub fn new(i2c: &'static SharedI2c) -> Self {
+    pub fn new(i2c: &'static SharedI2c, flash: super::StorageFlash) -> Self {
         Self {
             i2c,
             action_sub: ActionEvent::subscriber(),
             state: State::default(),
+            storage: Storage::new(flash),
         }
     }
 
-    fn handle_action(&mut self, action: LightAction) {
+    async fn handle_action(&mut self, action: LightAction) {
         match action {
             LightAction::RgbTog => self.state.toggle(),
             LightAction::RgbModeReverse => self.state.prev_effect(),
@@ -78,8 +91,12 @@ impl RgbController {
             LightAction::RgbSad => self.state.dec_saturation(),
             LightAction::RgbSpi => self.state.inc_speed(),
             LightAction::RgbSpd => self.state.dec_speed(),
-            _other => warn!("[RGB]: Unsupported action {:?}", _other),
+            _other => {
+                warn!("[RGB]: Unsupported action {:?}", _other);
+                return;
+            }
         }
+        self.storage.try_store(&self.state).await;
     }
 
     async fn configure_driver(&mut self, addr: u8) -> bool {
@@ -213,6 +230,10 @@ impl Runnable for RgbController {
     async fn run(&mut self) -> ! {
         info!("[Moonlander]: RGB controller initialized");
 
+        if let Some(state) = self.storage.load().await {
+            self.state = state;
+        }
+
         let mut frame = [Hsv::default(); LED_COUNT];
         let mut ticker = Ticker::every(Duration::from_millis(EFFECT_TICK_MS));
 
@@ -242,13 +263,50 @@ impl Runnable for RgbController {
                 }
                 select::Either::Second(Some(action)) => {
                     debug!("[RGB]: Action read {:?}", action);
-                    self.handle_action(action);
+                    self.handle_action(action).await;
                 }
                 _ => {}
             }
 
             embassy_futures::yield_now().await;
         }
+    }
+}
+
+struct Storage {
+    inner: Map,
+    buffer: [u8; 16],
+}
+
+impl Storage {
+    fn new(flash: super::StorageFlash) -> Self {
+        Self {
+            buffer: [0; 16],
+            inner: Map::new(
+                flash,
+                MapConfig::new(STORAGE_START_OFFSET..(STORAGE_START_OFFSET + STORAGE_SIZE)),
+                Cache::new_uncached(),
+            ),
+        }
+    }
+
+    #[inline(always)]
+    async fn load(&mut self) -> Option<State> {
+        self.inner
+            .fetch_item(&mut self.buffer, &KEY_RGB_STATE)
+            .await
+            .inspect_err(|_err| debug!("Could not load RGB state: {:?}", _err))
+            .ok()
+            .flatten()
+    }
+
+    #[inline(always)]
+    async fn try_store(&mut self, state: &State) {
+        _ = self
+            .inner
+            .store_item(&mut self.buffer, &KEY_RGB_STATE, state)
+            .await
+            .inspect_err(|_err| debug!("Could not store RGB state: {:?}", _err))
     }
 }
 
@@ -295,6 +353,16 @@ impl Buff {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+struct SerializableState {
+    enabled: bool,
+    effect_idx: u8,
+    palette_id: u8,
+    speed: u8,
+    saturation: u8,
+    brightness: u8,
+}
+
 struct State {
     enabled: bool,
     effect: Effect,
@@ -316,6 +384,64 @@ impl Default for State {
             brightness: u8::MAX,
             buff: Buff::new(),
         }
+    }
+}
+
+impl PostcardValue<'_> for State {}
+
+impl<'de> Deserialize<'de> for State {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data = SerializableState::deserialize(deserializer)?;
+        let effect = match data.effect_idx {
+            0 => Effect::Gradient,
+            1 => Effect::plain(),
+            2 => Effect::flow(),
+            3 => Effect::vortex(),
+            4 => Effect::sparkle(),
+            5 => Effect::ripple(),
+            _ => Effect::reactive(),
+        };
+
+        Ok(State {
+            enabled: data.enabled,
+            effect,
+            palette_id: data.palette_id as _,
+            speed: data.speed,
+            saturation: data.saturation,
+            brightness: data.brightness,
+            buff: Buff::new(),
+        })
+    }
+}
+
+impl Serialize for State {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let effect_idx = match &self.effect {
+            Effect::Gradient => 0,
+            Effect::Plain(_) => 1,
+            Effect::Flow(_) => 2,
+            Effect::Vortex(_) => 3,
+            Effect::Sparkle(_) => 4,
+            Effect::Ripple(_, _) => 5,
+            Effect::Reactive(_) => 6,
+        };
+
+        let data = SerializableState {
+            enabled: self.enabled,
+            effect_idx,
+            palette_id: self.palette_id as _,
+            speed: self.speed,
+            saturation: self.saturation,
+            brightness: self.brightness,
+        };
+
+        data.serialize(serializer)
     }
 }
 
