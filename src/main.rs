@@ -5,10 +5,10 @@
 mod macros;
 mod keyboard;
 
-#[cfg(feature = "defmt")]
-use {defmt_rtt as _, panic_probe as _};
 #[cfg(not(feature = "defmt"))]
 use panic_halt as _;
+#[cfg(feature = "defmt")]
+use {defmt_rtt as _, panic_probe as _};
 
 use embassy_executor::Spawner;
 use embassy_stm32::{bind_interrupts, peripherals};
