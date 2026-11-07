@@ -406,10 +406,11 @@ impl<'de> Deserialize<'de> for State {
             _ => Effect::reactive(),
         };
 
+        let palette_id = (data.palette_id as usize).clamp(0, palette::COLORS.len() - 1);
         Ok(State {
             enabled: data.enabled,
             effect,
-            palette_id: data.palette_id as _,
+            palette_id,
             speed: data.speed,
             saturation: data.saturation,
             brightness: data.brightness,
